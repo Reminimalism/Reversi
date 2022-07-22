@@ -20,7 +20,7 @@ namespace Reversi
 {
     Board::Board(std::shared_ptr<Window> window, std::shared_ptr<AI> ai)
         : _Window(window), _AI(ai), _Renderer(window), NeedUpdate(true), Player1Side(Side::Black),
-          IsPlayer1AI(false), IsPlayer2AI(true),
+          IsPlayer1AI(false), IsPlayer2AI(false),
           LastMoveTime(std::chrono::steady_clock::now())
     {
         _Window->SetResizeCallback([this](int width, int height) {
