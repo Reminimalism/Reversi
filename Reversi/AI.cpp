@@ -1,5 +1,7 @@
 #include "AI.h"
 
+#include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -163,9 +165,11 @@ namespace Reversi
         return result;
     }
 
+    constexpr float EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK = 0.25;
+
     void EvolvingAI::Learn(const Logic& game_over_state)
     {
-        if (!game_over_state.IsGameOver())
+        if (!game_over_state.IsGameOver() || LearningRate == 0)
             return;
         int black_count = 0;
         int white_count = 0;
@@ -181,7 +185,11 @@ namespace Reversi
             }
         }
         float black_score = black_count / (black_count + white_count); // [0, 1]
-        float white_score = 1 - black_score;
+        float black_learning_feedback = black_score * 2 - 1; // [-1, 1]
+        black_learning_feedback =
+            black_learning_feedback * (1 - EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK)
+            + (black_count > white_count ? EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK : -EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK);
+        float white_learning_feedback = -black_learning_feedback;
         Logic state;
         for (auto move : game_over_state.GetHistory())
         {
@@ -190,7 +198,7 @@ namespace Reversi
             if (turn == Side::None || turn != move_action.NewState)
                 throw std::logic_error("Wrong game history.");
             for (auto features : GetFeatures(state, move_action.X, move_action.Y))
-                Learn(features, turn == Side::Black ? black_score : white_score);
+                Learn(features, turn == Side::Black ? black_learning_feedback : white_learning_feedback);
             state.MakeMove(move_action.X, move_action.Y);
         }
         Save();
@@ -319,13 +327,12 @@ namespace Reversi
         return score / contribution_sum;
     }
 
-    void EvolvingAI::Learn(const Features& features, float target)
+    void EvolvingAI::Learn(const Features& features, float feedback)
     {
-        if (LearningRate == 0)
-            return;
         auto& data = DataAt(features);
-        float data_f = (float)data;
-        data = (unsigned char)(data_f + (target * 255 - data_f) * LearningRate);
+        float value_f = std::clamp((float)data + feedback * 255 * LearningRate, (float)0, (float)255);
+        value_f = feedback < 0 ? std::floor(value_f) : std::ceil(value_f);
+        data = (unsigned char) value_f;
     }
 
     std::vector<EvolvingAI::Features> EvolvingAI::GetFeatures(const Logic& state, int x, int y)

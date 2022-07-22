@@ -14,6 +14,7 @@ constexpr double BUTTON_EXIT_ANIMATION_DURATION = 0.5;
 constexpr double SLOTS_ANIMATION_PROGRESSIVE_RELATIVE_DELAY = 0.2;
 constexpr double AI_TO_PLAYER_INTERVAL = SLOT_ANIMATION_DURATION;
 constexpr double AI_TO_AI_INTERVAL = 0.05;
+constexpr double AI_TO_AI_AUTO_RESTART_DELAY = 0.5;
 
 namespace Reversi
 {
@@ -462,16 +463,7 @@ namespace Reversi
             switch (b_id)
             {
             case Renderer::ButtonID::ReplayButton:
-                _Logic.Reset();
-                Player1Side = Player1Side == Side::Black ? Side::White : Side::Black;
-                ButtonHighlights[Renderer::ButtonID::Player1SideVirtualButton] = Player1Side == Side::White ? 1 : 0;
-                ButtonAnimations[Renderer::ButtonID::Player1SideVirtualButton] = ButtonAnimation(
-                    _Renderer.GetButtonState(Renderer::ButtonID::Player1SideVirtualButton),
-                    Renderer::ButtonState(0, 0, ButtonHighlights[Renderer::ButtonID::Player1SideVirtualButton]),
-                    BUTTON_EXIT_ANIMATION_DURATION,
-                    std::chrono::steady_clock::now()
-                );
-                UpdateBoard();
+                Replay();
                 break;
             case Renderer::ButtonID::ExitButton:
                 _Window->Close();
@@ -496,9 +488,24 @@ namespace Reversi
         NeedUpdate = true;
     }
 
+    void Board::Replay()
+    {
+        _Logic.Reset();
+        Player1Side = Player1Side == Side::Black ? Side::White : Side::Black;
+        ButtonHighlights[Renderer::ButtonID::Player1SideVirtualButton] = Player1Side == Side::White ? 1 : 0;
+        ButtonAnimations[Renderer::ButtonID::Player1SideVirtualButton] = ButtonAnimation(
+            _Renderer.GetButtonState(Renderer::ButtonID::Player1SideVirtualButton),
+            Renderer::ButtonState(0, 0, ButtonHighlights[Renderer::ButtonID::Player1SideVirtualButton]),
+            BUTTON_EXIT_ANIMATION_DURATION,
+            std::chrono::steady_clock::now()
+        );
+        UpdateBoard();
+    }
+
     void Board::UpdateAI()
     {
-        double interval = IsPlayer1AI && IsPlayer2AI ? AI_TO_AI_INTERVAL : AI_TO_PLAYER_INTERVAL;
+        bool ai_vs_ai = IsPlayer1AI && IsPlayer2AI;
+        double interval = ai_vs_ai ? AI_TO_AI_INTERVAL : AI_TO_PLAYER_INTERVAL;
         if (IsAIsTurn() && ((std::chrono::duration<double>)(std::chrono::steady_clock::now() - LastMoveTime)).count() > interval)
         {
             auto result = _AI->Decide(_Logic);
@@ -506,6 +513,10 @@ namespace Reversi
             {
                 MakeMove(std::get<0>(result.value()), std::get<1>(result.value()));
             }
+        }
+        else if (ai_vs_ai && _Logic.IsGameOver() && ((std::chrono::duration<double>)(std::chrono::steady_clock::now() - LastMoveTime)).count() > AI_TO_AI_AUTO_RESTART_DELAY)
+        {
+            Replay();
         }
     }
 

@@ -108,6 +108,7 @@ namespace Reversi
         void UpdateBoard();
         void SlotMouseCallback(int x, int y, MouseEventManager::MouseEvent e);
         void ButtonMouseCallback(Renderer::ButtonID, MouseEventManager::MouseEvent e);
+        void Replay();
         /// @brief Has to be updated on each update.
         void UpdateAI();
         bool IsAIsTurn();

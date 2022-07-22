@@ -86,8 +86,8 @@ namespace Reversi
         unsigned char& DataAt(const Features&);
         /// @return In range [0, 1].
         float GetScore(const Features&);
-        /// @param target In range [0, 1].
-        void Learn(const Features&, float target);
+        /// @param feedback In range [-1, 1].
+        void Learn(const Features&, float feedback);
         /// @return 8 objects of Features type for each direction.
         std::vector<Features> GetFeatures(const Logic& state, int x, int y);
         /// @brief Gets the generalized place in range [0, 9].
