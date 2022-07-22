@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Reversi
+GenericName=Reversi
+Comment=Reversi game
+Exec=/path/to/Reversi
+Icon=/path/to/Reversi.svg
+Terminal=false
+Type=Application
+Categories=Game;
+
+# To be added to ~/.local/share/applications
