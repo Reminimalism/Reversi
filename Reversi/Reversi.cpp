@@ -8,9 +8,11 @@ using namespace std::chrono_literals;
 
 int main()
 {
-    std::cout << "Reminimalism - Reversi\n";
-    std::cout << Reversi::LICENSE;
-    std::cout << "\nA file named 'ReversiEvolvingAI.dat' will be created in the working directory if not present, to store AI data.\n";
+    std::cout << "Powered by:\n";
+    std::cout << Reversi::Info::DEPENDENCIES << '\n';
+    std::cout << Reversi::Info::NAME << " v" << Reversi::Info::VERSION << "\n";
+    std::cout << Reversi::Info::LICENSE << '\n';
+    std::cout << "A file named 'ReversiEvolvingAI.dat' will be created in the working directory if not present, to store AI data.\n";
     std::cout << "The AI starts from scratch and will learn little by little.\n";
     std::cout << "You can make a backup of ReversiEvolvingAI.dat to save the state of the AI.\n";
 

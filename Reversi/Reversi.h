@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "Licence.h"
+#include "Info.h"
 
 #include "Window.h"
 #include "MouseEventManager.h"
