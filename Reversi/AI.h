@@ -45,10 +45,10 @@ namespace Reversi
         ///                       equally contribute to the score as the one specific situation.
         EvolvingAI(std::string DataFilePath, float LearningRate = 0.1, float Generalization = 0.1);
         virtual std::optional<std::tuple<int, int>> Decide(const Logic& state) override;
-        virtual void Learn(const Logic& game_over_state) override;
+        virtual void Learn(const Logic& game_over_state) override; // TODO: Improve learning feedback
     private:
 
-        class Features
+        class Features // TODO: Decide on adding the number of moves done in range [0,59].
         {
         public:
             /// @brief In range [0,9].
