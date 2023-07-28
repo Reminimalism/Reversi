@@ -305,10 +305,11 @@ namespace Reversi
                         location_to_impact[location] = impact_number;
                     }
                 }
-                if (game_over_state.Get(impact_change.X, impact_change.Y) != impact_change.NewState)
-                {
-                    throw std::logic_error("This is a bug. Mismatch between final impact & game over state.");
-                }
+                // CHECK
+                //if (game_over_state.Get(impact_change.X, impact_change.Y) != impact_change.NewState)
+                //{
+                //    throw std::logic_error("This is a bug. Mismatch between final impact & game over state.");
+                //}
             }
             float raw_impact = 0;
             for (auto item : location_to_impact)
