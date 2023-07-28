@@ -57,7 +57,7 @@ namespace Reversi
                     int y_walk = y + y_dir;
                     while (Get(x_walk, y_walk) == other_turn) // Out of range => None side => false
                     {
-                        fraction.push_back(Change(x_walk, y_walk, Get(x, y), CurrentTurn));
+                        fraction.push_back(Change(x_walk, y_walk, Get(x_walk, y_walk), CurrentTurn));
                         x_walk += x_dir;
                         y_walk += y_dir;
                     }

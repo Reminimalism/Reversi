@@ -232,14 +232,14 @@ namespace Reversi
                     for (auto existing_impact : location_to_impacts[location])
                     {
                         float new_impact_factor =
-                            std::get<1>(*std::get<1>(existing_impact))
+                            std::get<1>(*existing_impact.second)
                             * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
                         // Update impact (where a disk is flipped)
-                        std::get<0>(*std::get<1>(existing_impact)) = change;
-                        std::get<1>(*std::get<1>(existing_impact)) = new_impact_factor;
+                        std::get<0>(*existing_impact.second) = change;
+                        std::get<1>(*existing_impact.second) = new_impact_factor;
                         // Add impact (where the disk is placed: move_action)
                         auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(move_action, new_impact_factor);
-                        auto original_move = std::get<0>(existing_impact);
+                        auto original_move = existing_impact.first;
                         add_impact(original_move, new_impact);
                     }
                 }
@@ -250,7 +250,7 @@ namespace Reversi
                 auto end_location = std::make_tuple(end.X, end.Y);
                 for (auto change : move.Changes)
                 {
-                    auto change_location = std::make_tuple(end.X, end.Y);
+                    auto change_location = std::make_tuple(change.X, change.Y);
                     if (change.OldState == Side::None || (
                             sign(change.X - move_action.X) == sign(end.X - move_action.X)
                             &&
@@ -260,10 +260,10 @@ namespace Reversi
                         for (auto existing_impact : location_to_impacts[end_location])
                         {
                             float new_impact_factor =
-                                std::get<1>(*std::get<1>(existing_impact))
+                                std::get<1>(*existing_impact.second)
                                 * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
                             auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(change, new_impact_factor);
-                            auto original_move = std::get<0>(existing_impact);
+                            auto original_move = existing_impact.first;
                             add_impact(original_move, new_impact);
                         }
                     }
@@ -304,6 +304,10 @@ namespace Reversi
                     {
                         location_to_impact[location] = impact_number;
                     }
+                }
+                if (game_over_state.Get(impact_change.X, impact_change.Y) != impact_change.NewState)
+                {
+                    throw std::logic_error("This is a bug. Mismatch between final impact & game over state.");
                 }
             }
             float raw_impact = 0;
