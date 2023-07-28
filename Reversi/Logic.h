@@ -19,13 +19,17 @@ namespace Reversi
             int Y;
             Side OldState;
             Side NewState;
+            friend auto operator<=>(const Change&, const Change&) = default;
         };
         struct Move
         {
         public:
-            Move(Side Turn, std::vector<Change> Changes);
+            Move(Side Turn, std::vector<Change> Changes, std::vector<Change> Ends);
             Side Turn;
+            /// @brief The changes made by the move. The first change is in the location of the move itself.
             std::vector<Change> Changes;
+            /// @brief The changes' ends that have made the move possible but don't change.
+            std::vector<Change> Ends;
         };
         Logic();
         void Reset();

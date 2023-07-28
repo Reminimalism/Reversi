@@ -4,6 +4,8 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <map>
+#include <memory>
 #include <stdexcept>
 
 namespace Reversi
@@ -166,6 +168,9 @@ namespace Reversi
     }
 
     constexpr float EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK = 0.25;
+    constexpr float EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT = 0.75;
+
+    constexpr int sign(int n) { return n == 0 ? 0 : (n < 0 ? -1 : 1); }
 
     void EvolvingAI::Learn(const Logic& game_over_state)
     {
@@ -190,16 +195,148 @@ namespace Reversi
             black_learning_feedback * (1 - EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK)
             + (black_count > white_count ? EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK : -EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK);
         float white_learning_feedback = -black_learning_feedback;
+
+        // Calculate move impacts by simulating the game again
+
+        /// Simulation state
         Logic state;
+        /// Move causing the impacts -> Impact location -> Impact (latest change and impact factor)
+        std::map<Logic::Change, std::map<std::tuple<int, int>, std::shared_ptr<std::tuple<Logic::Change, float>>>> move_to_impacts;
+        /// Impacts location -> Move causing the impact -> Impact (latest change and impact factor)
+        std::map<std::tuple<int, int>, std::map<Logic::Change, std::shared_ptr<std::tuple<Logic::Change, float>>>> location_to_impacts;
+        /// Features calculated from simulation states and stored for learning at the end.
+        std::map<Logic::Change, std::vector<Features>> move_to_features;
+        /// Adds impact, replacing if there's an old impact in place with lower factor.
+        auto add_impact = [&](Logic::Change original_move, std::shared_ptr<std::tuple<Logic::Change, float>> new_impact)
+        {
+            auto location = std::make_tuple(get<0>(*new_impact).X, get<0>(*new_impact).Y);
+            if (move_to_impacts[original_move].contains(location)
+                    && get<1>(*move_to_impacts[original_move][location])
+                        > get<1>(*new_impact))
+                return;
+            move_to_impacts[original_move][location] = new_impact;
+            location_to_impacts[location][original_move] = new_impact;
+        };
         for (auto move : game_over_state.GetHistory())
         {
             auto move_action = move.Changes[0];
             auto turn = state.GetCurrentTurn();
             if (turn == Side::None || turn != move_action.NewState)
                 throw std::logic_error("Wrong game history.");
-            for (auto features : GetFeatures(state, move_action.X, move_action.Y))
-                Learn(features, turn == Side::Black ? black_learning_feedback : white_learning_feedback);
+            for (auto change : move.Changes)
+            {
+                auto location = std::make_tuple(change.X, change.Y);
+                // Add/update indirect impacts (root: the flipped disks)
+                if (change.OldState != Side::None)
+                {
+                    for (auto existing_impact : location_to_impacts[location])
+                    {
+                        float new_impact_factor =
+                            std::get<1>(*std::get<1>(existing_impact))
+                            * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
+                        // Update impact (where a disk is flipped)
+                        std::get<0>(*std::get<1>(existing_impact)) = change;
+                        std::get<1>(*std::get<1>(existing_impact)) = new_impact_factor;
+                        // Add impact (where the disk is placed: move_action)
+                        auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(move_action, new_impact_factor);
+                        auto original_move = std::get<0>(existing_impact);
+                        add_impact(original_move, new_impact);
+                    }
+                }
+            }
+            for (auto end : move.Ends)
+            {
+                // Add indirect impacts (root: the unchanged end disks that caused flips)
+                auto end_location = std::make_tuple(end.X, end.Y);
+                for (auto change : move.Changes)
+                {
+                    auto change_location = std::make_tuple(end.X, end.Y);
+                    if (change.OldState == Side::None || (
+                            sign(change.X - move_action.X) == sign(end.X - move_action.X)
+                            &&
+                            sign(change.Y - move_action.Y) == sign(end.Y - move_action.Y)
+                        ))
+                    {
+                        for (auto existing_impact : location_to_impacts[end_location])
+                        {
+                            float new_impact_factor =
+                                std::get<1>(*std::get<1>(existing_impact))
+                                * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
+                            auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(change, new_impact_factor);
+                            auto original_move = std::get<0>(existing_impact);
+                            add_impact(original_move, new_impact);
+                        }
+                    }
+                }
+            }
+            for (auto change : move.Changes)
+            {
+                auto location = std::make_tuple(change.X, change.Y);
+                // Add direct impacts (caused by the new move)
+                auto impact = std::make_shared<std::tuple<Logic::Change, float>>(change, 1);
+                move_to_impacts[move_action][location] = impact;
+                location_to_impacts[location][move_action] = impact;
+            }
+            move_to_features[move_action] = GetFeatures(state, move_action.X, move_action.Y);
             state.MakeMove(move_action.X, move_action.Y);
+        }
+
+        // Calculate raw impacts for learning
+        std::map<Logic::Change, float> move_to_raw_impact;
+        float max_raw_black_impact = 0.000001;
+        float max_raw_white_impact = 0.000001;
+        for (auto item : move_to_impacts)
+        {
+            std::map<std::tuple<int, int>, float> location_to_impact;
+            for (auto impact : item.second)
+            {
+                auto impact_change = std::get<0>(*impact.second);
+                float impact_number = std::get<1>(*impact.second);
+                if (impact_change.NewState == game_over_state.GetWinner())
+                {
+                    auto location = std::make_tuple(impact_change.X, impact_change.Y);
+                    if (location_to_impact.contains(location))
+                    {
+                        if (impact_number > location_to_impact[location])
+                            location_to_impact[location] = impact_number;
+                    }
+                    else
+                    {
+                        location_to_impact[location] = impact_number;
+                    }
+                }
+            }
+            float raw_impact = 0;
+            for (auto item : location_to_impact)
+            {
+                raw_impact += item.second;
+            }
+            move_to_raw_impact[item.first] = raw_impact;
+            if (item.first.NewState == Side::Black)
+            {
+                if (raw_impact > max_raw_black_impact)
+                    max_raw_black_impact = raw_impact;
+            }
+            else if (item.first.NewState == Side::White)
+            {
+                if (raw_impact > max_raw_white_impact)
+                    max_raw_white_impact = raw_impact;
+            }
+            else
+            {
+                throw std::logic_error("Wrong game history, or a bug.");
+            }
+        }
+
+        // Learn
+        for (auto item : move_to_features)
+        {
+            bool is_black = item.first.NewState == Side::Black;
+            /// Normalized impact
+            float impact = move_to_raw_impact[item.first] / (is_black ? max_raw_black_impact : max_raw_white_impact);
+            // Learn based on impact-based feedback
+            for (auto features : item.second)
+                Learn(features, impact * (is_black ? black_learning_feedback : white_learning_feedback));
         }
         Save();
     }

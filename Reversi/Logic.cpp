@@ -6,8 +6,8 @@ namespace Reversi
         : X(X), Y(Y), OldState(OldState), NewState(NewState)
     {}
 
-    Logic::Move::Move(Side Turn, std::vector<Change> Changes)
-        : Turn(Turn), Changes(Changes)
+    Logic::Move::Move(Side Turn, std::vector<Change> Changes, std::vector<Change> Ends)
+        : Turn(Turn), Changes(Changes), Ends(Ends)
     {}
 
     Logic::Logic()
@@ -42,8 +42,9 @@ namespace Reversi
     Logic::Move Logic::MakeMove(int x, int y)
     {
         std::vector<Logic::Change> changes;
+        std::vector<Logic::Change> ends;
         if (GameOver || Get(x, y) != Side::None)
-            return Move(Side::None, changes);
+            return Move(Side::None, changes, ends);
         Side other_turn = CurrentTurn == Side::Black ? Side::White : Side::Black;
         for (int y_dir = -1; y_dir <= 1; y_dir++)
         {
@@ -67,6 +68,7 @@ namespace Reversi
                             changes.push_back(Change(x, y, Get(x, y), CurrentTurn));
                         for (auto& change : fraction)
                             changes.push_back(change);
+                        ends.push_back(Change(x_walk, y_walk, CurrentTurn, CurrentTurn));
                     }
                 }
             }
@@ -76,7 +78,7 @@ namespace Reversi
         for (auto& change : changes)
             Set(change.X, change.Y, change.NewState);
 
-        Move move(changes.size() != 0 ? CurrentTurn : Side::None, changes);
+        Move move(changes.size() != 0 ? CurrentTurn : Side::None, changes, ends);
 
         if (changes.size() != 0)
         {
@@ -97,7 +99,7 @@ namespace Reversi
     Logic::Move Logic::Undo()
     {
         if (GameOver || History.size() == 0)
-            return Move(Side::None, std::vector<Change>());
+            return Move(Side::None, std::vector<Change>(), std::vector<Change>());
 
         auto move = History.back();
 
@@ -119,7 +121,7 @@ namespace Reversi
     Logic::Move Logic::Redo()
     {
         if (GameOver || Future.size() == 0)
-            return Move(Side::None, std::vector<Change>());
+            return Move(Side::None, std::vector<Change>(), std::vector<Change>());
 
         auto move = Future.back();
 
