@@ -368,6 +368,9 @@ namespace Reversi
         Log("----------------------------------");
         Log("GAME OVER - LEARNING...");
         Log("----------------------------------");
+        Log("Overall black learning feedback:");
+        Log(std::to_string(black_learning_feedback));
+        Log("----------------------------------");
         for (auto move : game_over_state.GetHistory())
         {
             auto feedback = move_to_feedback[move.Changes[0]];
@@ -402,6 +405,11 @@ namespace Reversi
                 Log();
             }
         }
+        Log("----------------------------------");
+        Log("Overall black learning feedback:");
+        Log(std::to_string(black_learning_feedback));
+        Log("Overall white learning feedback:");
+        Log(std::to_string(white_learning_feedback));
         Log("----------------------------------");
 #endif
         Save();
