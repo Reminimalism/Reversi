@@ -549,8 +549,9 @@ namespace Reversi
     {
         if (Generalization == 0)
             return ((float)DataAt(features))/255;
-        float score = ((float)DataAt(features))/255;
-        float contribution_sum = 1;
+        float specific_score = ((float)DataAt(features))/255;
+        float generalized_score = 0;
+        float generalized_count = 0;
         Features general_features = features;
         for (int nccc = 0; nccc < 7; nccc++)
         {
@@ -560,11 +561,12 @@ namespace Reversi
                     continue;
                 general_features.NeighborColorChangeCount = nccc;
                 general_features.IslandsCount = ic;
-                score += (((float)DataAt(features)) / 255) * Generalization;
-                contribution_sum += Generalization; // Readable code
+                generalized_score += (((float)DataAt(general_features)) / 255);
+                generalized_count += 1;
             }
         }
-        return score / contribution_sum;
+        generalized_score /= generalized_count;
+        return (1 - Generalization) * specific_score + Generalization * generalized_score;
     }
 
     void EvolvingAI::Learn(const Features& features, float feedback)

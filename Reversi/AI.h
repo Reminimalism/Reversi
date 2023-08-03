@@ -38,11 +38,10 @@ namespace Reversi
     public:
         /// @param LearningRate In range [0, 1].
         ///                     0: no learning, 1: immediately thinking the last game is everything and ignoring similar history.
-        /// @param Generalization How much generalization is done on weak features in range [0,1].
-        ///                       0: no generalization, 1: complete generalization.
-        ///                       There are 34 other general situations for each specific situation,
-        ///                       that means Generalization=1/34 would make the sum of all other situations
-        ///                       equally contribute to the score as the one specific situation.
+        /// @param Generalization How much generalization is done on weak features, in range [0,1].
+        ///                       0: no generalization,
+        ///                       0.5: specific and generalization scores equally contribute to the score,
+        ///                       1: complete generalization.
         EvolvingAI(std::string DataFilePath, float LearningRate = 0.1, float Generalization = 0.1);
         virtual std::optional<std::tuple<int, int>> Decide(const Logic& state) override;
         virtual void Learn(const Logic& game_over_state) override;
