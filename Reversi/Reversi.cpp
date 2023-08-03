@@ -15,6 +15,9 @@ int main()
     std::cout << "A file named 'ReversiEvolvingAI.dat' will be created in the working directory if not present, to store AI data.\n";
     std::cout << "The AI starts from scratch and will learn little by little.\n";
     std::cout << "You can make a backup of ReversiEvolvingAI.dat to save the state of the AI.\n";
+#if REVERSI_DEBUG
+    std::cout << "\nDEBUG MODE\n\n";
+#endif
 
     std::shared_ptr<Reversi::Window> window(new Reversi::Window());
     std::shared_ptr<Reversi::AI> ai(new Reversi::EvolvingAI("ReversiEvolvingAI.dat"));

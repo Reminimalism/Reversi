@@ -365,6 +365,9 @@ namespace Reversi
         }
 #if REVERSI_DEBUG
         // Learn debug info
+        Log("----------------------------------");
+        Log("GAME OVER - LEARNING...");
+        Log("----------------------------------");
         for (auto move : game_over_state.GetHistory())
         {
             auto feedback = move_to_feedback[move.Changes[0]];
@@ -399,6 +402,7 @@ namespace Reversi
                 Log();
             }
         }
+        Log("----------------------------------");
 #endif
         Save();
     }
