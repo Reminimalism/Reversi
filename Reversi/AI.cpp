@@ -6,6 +6,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <random>
 #include <stdexcept>
 
 namespace Reversi
@@ -143,9 +144,9 @@ namespace Reversi
 
     std::optional<std::tuple<int, int>> EvolvingAI::Decide(const Logic& state)
     {
-        std::optional<std::tuple<int, int>> result;
         if (state.GetCurrentTurn() == Side::None || state.IsGameOver())
-            return result;
+            return std::optional<std::tuple<int, int>>();
+        std::vector<std::tuple<int, int>> best_moves;
         float best_score = EVOLVING_AI_MIN_SCORE;
         for (int x = 0; x < 8; x++)
         {
@@ -159,12 +160,38 @@ namespace Reversi
                     if (score > best_score)
                     {
                         best_score = score;
-                        result = std::make_tuple(x, y);
+                        best_moves.clear();
+                        best_moves.push_back(std::make_tuple(x, y));
+                    }
+                    else if (score == best_score)
+                    {
+                        best_moves.push_back(std::make_tuple(x, y));
                     }
                 }
             }
         }
-        return result;
+        if (best_moves.size() == 0) // Robust code
+            return std::optional<std::tuple<int, int>>();
+        if (best_moves.size() == 1)
+            return best_moves[0];
+        std::random_device device;
+        std::mt19937 mt(device());
+        std::uniform_int_distribution<std::mt19937::result_type> dist(0, best_moves.size() - 1);
+        int choice = dist(mt);
+#if REVERSI_DEBUG
+        Log("AI: Multiple best choices:", " ");
+        for (auto item : best_moves)
+            Log("(" + std::to_string(std::get<0>(item)) + ", " + std::to_string(std::get<1>(item)) + ")", " ");
+        Log();
+        Log(
+            "AI: Chose: ("
+            + std::to_string(std::get<0>(best_moves[choice]))
+            + ", "
+            + std::to_string(std::get<1>(best_moves[choice]))
+            + ")"
+        );
+#endif
+        return best_moves[choice];
     }
 
     constexpr float EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK = 0.25;
