@@ -168,7 +168,7 @@ namespace Reversi
     }
 
     constexpr float EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK = 0.25;
-    constexpr float EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT = 0.75;
+    constexpr float EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT = 0.125;
 
     constexpr int sign(int n) { return n == 0 ? 0 : (n < 0 ? -1 : 1); }
 
