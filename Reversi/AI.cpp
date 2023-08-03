@@ -189,11 +189,13 @@ namespace Reversi
                     white_count++;
             }
         }
-        float black_score = black_count / (black_count + white_count); // [0, 1]
+        float black_score = (float)black_count / (black_count + white_count); // [0, 1]
         float black_learning_feedback = black_score * 2 - 1; // [-1, 1]
         black_learning_feedback =
             black_learning_feedback * (1 - EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK)
-            + (black_count > white_count ? EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK : -EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK);
+            + (black_count == white_count ? 0
+                : (black_count > white_count ?
+                    EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK : -EVOLVING_AI_LEARNING_WIN_BASE_FEEDBACK));
         float white_learning_feedback = -black_learning_feedback;
 
         // Calculate move impacts by simulating the game again
