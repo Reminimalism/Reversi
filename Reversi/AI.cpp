@@ -148,10 +148,16 @@ namespace Reversi
             return std::optional<std::tuple<int, int>>();
         std::vector<std::tuple<int, int>> best_moves;
         float best_score = EVOLVING_AI_MIN_SCORE;
+#if REVERSI_DEBUG
+        std::map<std::tuple<int, int>, float> location_to_score;
+#endif
         for (int x = 0; x < 8; x++)
         {
             for (int y = 0; y < 8; y++)
             {
+#if REVERSI_DEBUG
+                location_to_score[std::make_tuple(x, y)] = 0;
+#endif
                 if (state.CanMakeMove(x, y))
                 {
                     float score = 0;
@@ -167,9 +173,23 @@ namespace Reversi
                     {
                         best_moves.push_back(std::make_tuple(x, y));
                     }
+#if REVERSI_DEBUG
+                    location_to_score[std::make_tuple(x, y)] = score;
+#endif
                 }
             }
         }
+#if REVERSI_DEBUG
+        Log("AI: Scores:");
+        for (int y = 7; y >= 0; y--)
+        {
+            for (int x = 0; x < 8; x++)
+            {
+                Log(std::to_string(location_to_score[std::make_tuple(x, y)]), " ");
+            }
+            Log();
+        }
+#endif
         if (best_moves.size() == 0) // Robust code
             return std::optional<std::tuple<int, int>>();
         if (best_moves.size() == 1)
