@@ -247,6 +247,8 @@ namespace Reversi
 
         // Calculate move impacts by simulating the game again
 
+        // TODO: Independent learning for each feature based on disks affected by each feature.
+
         /// Simulation state
         Logic state;
         /// Move causing the impacts -> Impact location -> Impact (latest change and impact factor)
