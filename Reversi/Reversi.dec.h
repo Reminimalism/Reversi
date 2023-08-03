@@ -34,8 +34,20 @@ Renderer uses Window
 
 */
 
+#ifndef REVERSI_DEBUG
+    #define REVERSI_DEBUG 0
+#endif
+
+#if REVERSI_DEBUG
+#include <iostream>
+#include <string>
+#endif
+
 namespace Reversi
 {
+#if REVERSI_DEBUG
+    inline void Log(std::string message = "", std::string end = "\n") { std::cout << message << end; }
+#endif
     enum Side : char { None=0, Black=1, White=2 };
     class Window;
     class MouseEventManager;

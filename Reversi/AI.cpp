@@ -217,6 +217,11 @@ namespace Reversi
             move_to_impacts[original_move][location] = new_impact;
             location_to_impacts[location][original_move] = new_impact;
         };
+#if REVERSI_DEBUG
+        // Learn debug info
+        std::map<Logic::Change, std::tuple<Logic, Logic>> move_to_states;
+        std::map<Logic::Change, float> move_to_feedback;
+#endif
         for (auto move : game_over_state.GetHistory())
         {
             auto move_action = move.Changes[0];
@@ -278,7 +283,15 @@ namespace Reversi
                 location_to_impacts[location][move_action] = impact;
             }
             move_to_features[move_action] = GetFeatures(state, move_action.X, move_action.Y);
+#if REVERSI_DEBUG
+            // Learn debug info
+            auto prev_state = state;
+#endif
             state.MakeMove(move_action.X, move_action.Y);
+#if REVERSI_DEBUG
+            // Learn debug info
+            move_to_states[move_action] = std::make_tuple(prev_state, state);
+#endif
         }
 
         // Calculate raw impacts for learning
@@ -305,11 +318,13 @@ namespace Reversi
                         location_to_impact[location] = impact_number;
                     }
                 }
+#if REVERSI_DEBUG
                 // CHECK
-                //if (game_over_state.Get(impact_change.X, impact_change.Y) != impact_change.NewState)
-                //{
-                //    throw std::logic_error("This is a bug. Mismatch between final impact & game over state.");
-                //}
+                if (game_over_state.Get(impact_change.X, impact_change.Y) != impact_change.NewState)
+                {
+                    throw std::logic_error("This is a bug. Mismatch between final impact & game over state.");
+                }
+#endif
             }
             float raw_impact = 0;
             for (auto item : location_to_impact)
@@ -339,10 +354,52 @@ namespace Reversi
             bool is_black = item.first.NewState == Side::Black;
             /// Normalized impact
             float impact = move_to_raw_impact[item.first] / (is_black ? max_raw_black_impact : max_raw_white_impact);
+            float feedback = impact * (is_black ? black_learning_feedback : white_learning_feedback);
+#if REVERSI_DEBUG
+            // Learn debug info
+            move_to_feedback[item.first] = feedback;
+#endif
             // Learn based on impact-based feedback
             for (auto features : item.second)
-                Learn(features, impact * (is_black ? black_learning_feedback : white_learning_feedback));
+                Learn(features, feedback);
         }
+#if REVERSI_DEBUG
+        // Learn debug info
+        for (auto move : game_over_state.GetHistory())
+        {
+            auto feedback = move_to_feedback[move.Changes[0]];
+            Log(
+                std::string("Learn with feedback=")
+                + std::to_string(feedback)
+                + ":"
+            );
+            auto& [ before, after ] = move_to_states[move.Changes[0]];
+            for (int y = 7; y >= 0; y--)
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    if (move.Changes[0].X == x && move.Changes[0].Y == y)
+                    {
+                        if (before.Get(x, y) == Side::None)
+                            Log("*", " ");
+                        else
+                            Log("BUG!\nBUG! MOVE MADE ON NON-EMPTY SLOT!\nBUG!");
+                    }
+                    else
+                        Log(std::to_string((int)before.Get(x, y)), " ");
+                }
+                if (y == 4)
+                    Log("=> ", "");
+                else
+                    Log("   ", "");
+                for (int x = 0; x < 8; x++)
+                {
+                    Log(std::to_string((int)after.Get(x, y)), " ");
+                }
+                Log();
+            }
+        }
+#endif
         Save();
     }
 
