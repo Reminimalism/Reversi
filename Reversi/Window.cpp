@@ -8,7 +8,7 @@ namespace Reversi
     int Window::ObjectsCount = 0;
     std::map<GLFWwindow*, Window*> Window::ObjectsMap;
 
-    Window::Window() : _MouseEventManager(true, 100), ResizeCallback(nullptr)
+    Window::Window(const std::string& title) : _MouseEventManager(true, 100), ResizeCallback(nullptr)
     {
         if (ObjectsCount == 0)
         {
@@ -23,8 +23,8 @@ namespace Reversi
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
         glfwWindowHint(GLFW_SAMPLES, 8);
-        _GLFWWindow = glfwCreateWindow(640, 480, "Reversi", NULL, NULL);
-        //_GLFWWindow = glfwCreateWindow(640, 480, "Reversi", glfwGetPrimaryMonitor(), NULL); // fullscreen
+        _GLFWWindow = glfwCreateWindow(640, 480, title.c_str(), NULL, NULL);
+        //_GLFWWindow = glfwCreateWindow(640, 480, title.c_str(), glfwGetPrimaryMonitor(), NULL); // fullscreen
         if (!_GLFWWindow)
         {
             ObjectsCount--;

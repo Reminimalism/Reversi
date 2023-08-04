@@ -9,13 +9,14 @@
 
 #include <functional>
 #include <map>
+#include <string>
 
 namespace Reversi
 {
     class Window final
     {
     public:
-        Window();
+        Window(const std::string& title = "Reversi");
         ~Window();
 
         Window(const Window&) = delete;
