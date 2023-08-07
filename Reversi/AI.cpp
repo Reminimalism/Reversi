@@ -700,10 +700,12 @@ namespace Reversi
     {
         if (x >= 4)
         {
+            x = 7 - x;
             dx = -dx;
         }
         if (y >= 4)
         {
+            y = 7 - y;
             dy = -dy;
         }
         if (x < y)
