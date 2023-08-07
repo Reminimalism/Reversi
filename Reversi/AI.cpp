@@ -729,7 +729,7 @@ namespace Reversi
             {
                 return 6;
             }
-            else // x > 0
+            else // dx > 0
             {
                 return 7;
             }
@@ -747,7 +747,7 @@ namespace Reversi
             {
                 throw std::logic_error("Something is wrong with getting generalized direction.");
             }
-            else // x > 0
+            else // dx > 0
             {
                 return 0;
             }
@@ -765,10 +765,50 @@ namespace Reversi
             {
                 return 2;
             }
-            else // x > 0
+            else // dx > 0
             {
                 return 1;
             }
         }
+    }
+
+    std::tuple<int, int> EvolvingAI::GetActualDirection(int x, int y, int generalized_direction)
+    {
+        // dy=+: 3 2 1
+        // dy=0: 4   0
+        // dy=-: 5 6 7
+        //      ......
+        //   dx: - 0 +
+        int dx = 0;
+        int dy = 0;
+        switch (generalized_direction)
+        {
+            case 0: dx =  1; dy =  0; break;
+            case 1: dx =  1; dy =  1; break;
+            case 2: dx =  0; dy =  1; break;
+            case 3: dx = -1; dy =  1; break;
+            case 4: dx = -1; dy =  0; break;
+            case 5: dx = -1; dy = -1; break;
+            case 6: dx =  0; dy = -1; break;
+            case 7: dx =  1; dy = -1; break;
+            default: throw std::range_error("Generalized direction must be in range [0, 7].");
+        }
+        int mirrored_x = x >= 4 ? 7 - x : x;
+        int mirrored_y = y >= 4 ? 7 - y : y;
+        if (mirrored_x < mirrored_y)
+        {
+            int temp = dx;
+            dx = dy;
+            dy = temp;
+        }
+        if (y >= 4)
+        {
+            dy = -dy;
+        }
+        if (x >= 4)
+        {
+            dx = -dx;
+        }
+        return std::make_tuple(dx, dy);
     }
 }
