@@ -92,8 +92,8 @@ namespace Reversi
         /// @brief Gets the generalized place in range [0, 9].
         int GetGeneralizedPlace(int x, int y);
         /// @brief Converts the direction to the direction for generalized place.
-        /// @param dx The x direction in [-1, 1]. Both dx and dy can't be 0 at the same time.
-        /// @param dy The y direction in [-1, 1]. Both dx and dy can't be 0 at the same time.
+        /// @param dx The x direction. Both dx and dy can't be 0 at the same time.
+        /// @param dy The y direction. Both dx and dy can't be 0 at the same time.
         int GetGeneralizedDirection(int x, int y, int dx, int dy);
         /// @brief Converts the generalized direction to the actual direction on the board.
         /// @return (dx, dy) tuple, both dx and dy are in [-1, 1].

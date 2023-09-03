@@ -247,23 +247,21 @@ namespace Reversi
 
         // Calculate move impacts by simulating the game again
 
-        // TODO: Independent learning for each feature based on disks affected by each feature.
-
-        /// Simulation state
+        /// @brief Simulation state
         Logic state;
-        /// Move causing the impacts -> Impact location -> Impact (latest change and impact factor)
-        std::map<Logic::Change, std::map<std::tuple<int, int>, std::shared_ptr<std::tuple<Logic::Change, float>>>> move_to_impacts;
-        /// Impacts location -> Move causing the impact -> Impact (latest change and impact factor)
-        std::map<std::tuple<int, int>, std::map<Logic::Change, std::shared_ptr<std::tuple<Logic::Change, float>>>> location_to_impacts;
-        /// Features calculated from simulation states and stored for learning at the end.
+        /// @brief Move causing the impacts & direction of it -> Impact location -> Impact (latest change and impact factor)
+        std::map<std::tuple<Logic::Change, int>, std::map<std::tuple<int, int>, std::shared_ptr<std::tuple<Logic::Change, float>>>> move_to_impacts;
+        /// @brief Impacts location -> Move causing the impact & direction of it -> Impact (latest change and impact factor)
+        std::map<std::tuple<int, int>, std::map<std::tuple<Logic::Change, int>, std::shared_ptr<std::tuple<Logic::Change, float>>>> location_to_impacts;
+        /// @brief Features calculated from simulation states and stored for learning at the end.
         std::map<Logic::Change, std::vector<Features>> move_to_features;
-        /// Adds impact, replacing if there's an old impact in place with lower factor.
-        auto add_impact = [&](Logic::Change original_move, std::shared_ptr<std::tuple<Logic::Change, float>> new_impact)
+        /// @brief Adds impact, replacing if there's an old impact in place with lower factor.
+        auto add_impact = [&](std::tuple<Logic::Change, int> original_move, std::shared_ptr<std::tuple<Logic::Change, float>> new_impact)
         {
             auto location = std::make_tuple(get<0>(*new_impact).X, get<0>(*new_impact).Y);
             if (move_to_impacts[original_move].contains(location)
                     && get<1>(*move_to_impacts[original_move][location])
-                        > get<1>(*new_impact))
+                        > get<1>(*new_impact)) // The existing impact has a higher impact score
                 return;
             move_to_impacts[original_move][location] = new_impact;
             location_to_impacts[location][original_move] = new_impact;
@@ -271,40 +269,42 @@ namespace Reversi
 #if REVERSI_DEBUG
         // Learn debug info
         std::map<Logic::Change, std::tuple<Logic, Logic>> move_to_states;
-        std::map<Logic::Change, float> move_to_feedback;
+        /// @brief Move -> Direction -> Feedback
+        std::map<Logic::Change, std::map<int, float>> move_to_feedbacks;
 #endif
-        for (auto move : game_over_state.GetHistory())
+        for (const auto& move : game_over_state.GetHistory())
         {
             auto move_action = move.Changes[0];
             auto turn = state.GetCurrentTurn();
             if (turn == Side::None || turn != move_action.NewState)
                 throw std::logic_error("Wrong game history.");
-            for (auto change : move.Changes)
+            auto features = GetFeatures(state, move_action.X, move_action.Y);
+            move_to_features[move_action] = features;
+            for (const auto& change : move.Changes)
             {
                 auto location = std::make_tuple(change.X, change.Y);
                 // Add/update indirect impacts (root: the flipped disks)
                 if (change.OldState != Side::None)
                 {
-                    for (auto existing_impact : location_to_impacts[location])
+                    for (const auto& [original_move, existing_impact] : location_to_impacts[location])
                     {
                         float new_impact_factor =
-                            std::get<1>(*existing_impact.second)
+                            std::get<1>(*existing_impact)
                             * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
                         // Update impact (where a disk is flipped)
-                        std::get<0>(*existing_impact.second) = change;
-                        std::get<1>(*existing_impact.second) = new_impact_factor;
+                        std::get<0>(*existing_impact) = change;
+                        std::get<1>(*existing_impact) = new_impact_factor;
                         // Add impact (where the disk is placed: move_action)
                         auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(move_action, new_impact_factor);
-                        auto original_move = existing_impact.first;
                         add_impact(original_move, new_impact);
                     }
                 }
             }
-            for (auto end : move.Ends)
+            for (const auto& end : move.Ends)
             {
                 // Add indirect impacts (root: the unchanged end disks that caused flips)
                 auto end_location = std::make_tuple(end.X, end.Y);
-                for (auto change : move.Changes)
+                for (const auto& change : move.Changes)
                 {
                     auto change_location = std::make_tuple(change.X, change.Y);
                     if (change.OldState == Side::None || (
@@ -313,27 +313,43 @@ namespace Reversi
                             sign(change.Y - move_action.Y) == sign(end.Y - move_action.Y)
                         ))
                     {
-                        for (auto existing_impact : location_to_impacts[end_location])
+                        for (const auto& [original_move, existing_impact] : location_to_impacts[end_location])
                         {
                             float new_impact_factor =
-                                std::get<1>(*existing_impact.second)
+                                std::get<1>(*existing_impact)
                                 * EVOLVING_AI_LEARNING_IMPACT_REDUCTION_COEFFICIENT;
                             auto new_impact = std::make_shared<std::tuple<Logic::Change, float>>(change, new_impact_factor);
-                            auto original_move = existing_impact.first;
                             add_impact(original_move, new_impact);
                         }
                     }
                 }
             }
-            for (auto change : move.Changes)
+            for (const auto& change : move.Changes)
             {
                 auto location = std::make_tuple(change.X, change.Y);
                 // Add direct impacts (caused by the new move)
                 auto impact = std::make_shared<std::tuple<Logic::Change, float>>(change, 1);
-                move_to_impacts[move_action][location] = impact;
-                location_to_impacts[location][move_action] = impact;
+                if (change.X == move_action.X && change.Y == move_action.Y)
+                {
+                    for (int i = 0; i < 8; i++)
+                    {
+                        auto original_move = std::make_tuple(move_action, i);
+                        move_to_impacts[original_move][location] = impact;
+                        location_to_impacts[location][original_move] = impact;
+                    }
+                }
+                else
+                {
+                    int direction = GetGeneralizedDirection(
+                        move_action.X, move_action.Y,
+                        change.X - move_action.X,
+                        change.Y - move_action.Y
+                    );
+                    auto original_move = std::make_tuple(move_action, direction);
+                    move_to_impacts[original_move][location] = impact;
+                    location_to_impacts[location][original_move] = impact;
+                }
             }
-            move_to_features[move_action] = GetFeatures(state, move_action.X, move_action.Y);
 #if REVERSI_DEBUG
             // Learn debug info
             auto prev_state = state;
@@ -346,13 +362,13 @@ namespace Reversi
         }
 
         // Calculate raw impacts for learning
-        std::map<Logic::Change, float> move_to_raw_impact;
+        std::map<std::tuple<Logic::Change, int>, float> move_to_raw_impact;
         float max_raw_black_impact = 0.000001;
         float max_raw_white_impact = 0.000001;
-        for (auto item : move_to_impacts)
+        for (const auto& item : move_to_impacts)
         {
             std::map<std::tuple<int, int>, float> location_to_impact;
-            for (auto impact : item.second)
+            for (const auto& impact : item.second)
             {
                 auto impact_change = std::get<0>(*impact.second);
                 float impact_number = std::get<1>(*impact.second);
@@ -378,17 +394,17 @@ namespace Reversi
 #endif
             }
             float raw_impact = 0;
-            for (auto item : location_to_impact)
+            for (const auto& item : location_to_impact)
             {
                 raw_impact += item.second;
             }
             move_to_raw_impact[item.first] = raw_impact;
-            if (item.first.NewState == Side::Black)
+            if (std::get<0>(item.first).NewState == Side::Black)
             {
                 if (raw_impact > max_raw_black_impact)
                     max_raw_black_impact = raw_impact;
             }
-            else if (item.first.NewState == Side::White)
+            else if (std::get<0>(item.first).NewState == Side::White)
             {
                 if (raw_impact > max_raw_white_impact)
                     max_raw_white_impact = raw_impact;
@@ -400,19 +416,22 @@ namespace Reversi
         }
 
         // Learn
-        for (auto item : move_to_features)
+        for (const auto& [move, move_features] : move_to_features)
         {
-            bool is_black = item.first.NewState == Side::Black;
-            /// Normalized impact
-            float impact = move_to_raw_impact[item.first] / (is_black ? max_raw_black_impact : max_raw_white_impact);
-            float feedback = impact * (is_black ? black_learning_feedback : white_learning_feedback);
+            bool is_black = move.NewState == Side::Black;
+            for (const auto& features : move_features)
+            {
+                auto move_and_direction = std::make_tuple(move, features.Direction);
+                /// @brief Normalized impact
+                float impact = move_to_raw_impact[move_and_direction] / (is_black ? max_raw_black_impact : max_raw_white_impact);
+                float feedback = impact * (is_black ? black_learning_feedback : white_learning_feedback);
 #if REVERSI_DEBUG
-            // Learn debug info
-            move_to_feedback[item.first] = feedback;
+                // Learn debug info
+                move_to_feedbacks[move][features.Direction] = feedback;
 #endif
-            // Learn based on impact-based feedback
-            for (auto features : item.second)
+                // Learn based on impact-based feedback
                 Learn(features, feedback);
+            }
         }
 #if REVERSI_DEBUG
         // Learn debug info
@@ -422,14 +441,13 @@ namespace Reversi
         Log("Overall black learning feedback:");
         Log(std::to_string(black_learning_feedback));
         Log("----------------------------------");
-        for (auto move : game_over_state.GetHistory())
+        for (const auto& move : game_over_state.GetHistory())
         {
-            auto feedback = move_to_feedback[move.Changes[0]];
-            Log(
-                std::string("Learn with feedback=")
-                + std::to_string(feedback)
-                + ":"
-            );
+            auto feedbacks = move_to_feedbacks[move.Changes[0]];
+            Log(std::string("Learn with feedback { "), "");
+            for (const auto& [direction, feedback] : feedbacks)
+                Log(std::to_string(direction) + ":" + std::to_string(feedback), " ");
+            Log("}:");
             auto& [ before, after ] = move_to_states[move.Changes[0]];
             for (int y = 7; y >= 0; y--)
             {
