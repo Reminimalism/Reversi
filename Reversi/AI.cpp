@@ -446,7 +446,12 @@ namespace Reversi
             auto feedbacks = move_to_feedbacks[move.Changes[0]];
             Log(std::string("Learn with feedback { "), "");
             for (const auto& [direction, feedback] : feedbacks)
-                Log(std::to_string(direction) + ":" + std::to_string(feedback), " ");
+            {
+                auto [x, y] = GetActualDirection(move.Changes[0].X, move.Changes[0].Y, direction);
+                Log(x == 0 ? "o" : (x < 0 ? "-" : "+"), "");
+                Log(y == 0 ? "o" : (y < 0 ? "-" : "+"), "");
+                Log(":" + std::to_string(feedback), " ");
+            }
             Log("}:");
             auto& [ before, after ] = move_to_states[move.Changes[0]];
             for (int y = 7; y >= 0; y--)
