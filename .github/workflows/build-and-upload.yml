@@ -1,12 +1,12 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CMake on multiple platforms
+name: Build and upload
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version'
+        description: 'Version without v for zip file name'
         required: true
 
 jobs:
@@ -26,22 +26,31 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         build_type: [Release]
-        c_compiler: [gcc, clang, cl]
+        #c_compiler: [gcc, clang, cl]
+        c_compiler: [gcc, cl]
         include:
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+            output_filename: Reversi.exe
+            zip_files_command: move ${{ github.workspace }}/build/Reversi/Reversi.exe . && move ${{ github.workspace }}/LICENSE .
+            zip_command: Compress-Archive -Path ./* -Destination reversi-v${{ inputs.version }}-windows-x86_64.zip
+            zip_name: reversi-v${{ inputs.version }}-windows-x86_64.zip
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
-          - os: ubuntu-latest
-            c_compiler: clang
-            cpp_compiler: clang++
+            output_filename: Reversi
+            zip_files_command: mv ${{ github.workspace }}/build/Reversi/Reversi ./ && mv ${{ github.workspace }}/LICENSE ./ && mv ${{ github.workspace }}/reminimalism-reversi.desktop ./ && mv ${{ github.workspace }}/icon/Reversi.svg ./
+            zip_command: zip reversi-v${{ inputs.version }}-linux-x86_64.zip ./*
+            zip_name: reversi-v${{ inputs.version }}-linux-x86_64.zip
+          #- os: ubuntu-latest
+          #  c_compiler: clang
+          #  cpp_compiler: clang++
         exclude:
           - os: windows-latest
             c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
+          #- os: windows-latest
+          #  c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
 
@@ -74,3 +83,31 @@ jobs:
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
+
+    - name: Get release info
+      id: latest_release_info
+      uses: jossef/action-latest-release-info@v1.2.1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Create zip folder
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: mkdir zipfiles
+
+    - name: Prepare to create zip
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}/zipfiles
+      run: ${{ matrix.zip_files_command }}
+
+    - name: Create zip
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}/zipfiles
+      run: ${{ matrix.zip_command }}
+
+    - name: Upload zip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.latest_release_info.outputs.upload_url }}
+        asset_path: ${{ steps.strings.outputs.build-output-dir }}/zipfiles/${{ matrix.zip_name }}
+        asset_name: ${{ matrix.zip_name }}
+        asset_content_type: application/zip
