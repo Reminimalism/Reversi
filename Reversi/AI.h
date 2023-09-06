@@ -79,7 +79,7 @@ namespace Reversi
         ];
 
         void ResetData();
-        void RenameToBackup(bool wrong_file);
+        void RenameToBackup(bool unsupported_file);
         void Load();
         void Save();
         unsigned char& DataAt(const Features&);

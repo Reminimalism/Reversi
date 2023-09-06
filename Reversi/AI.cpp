@@ -495,7 +495,7 @@ namespace Reversi
         'R','e','m','i','n','i','m','a','l','i','s','m','.','R','e','v','e','r','s','i','.','E','v','o','l','v','i','n','g','A','I',
         0xFF
     };
-    constexpr unsigned char EVOLVING_AI_FILE_VERSION[] = { 0, 0, 0, 0 };
+    constexpr unsigned char EVOLVING_AI_FILE_VERSION[] = { 0, 0, 0, 1 };
 
     void EvolvingAI::ResetData()
     {
@@ -505,12 +505,12 @@ namespace Reversi
         }
     }
 
-    void EvolvingAI::RenameToBackup(bool wrong_file)
+    void EvolvingAI::RenameToBackup(bool unsupported_file)
     {
         int i = 0;
-        while (std::filesystem::exists(DataFilePath + "." + std::to_string(i) + (wrong_file ? ".wrong-file-backup" : ".backup")))
+        while (std::filesystem::exists(DataFilePath + "." + std::to_string(i) + (unsupported_file ? ".unsupported-file-backup" : ".backup")))
             i++;
-        std::filesystem::rename(DataFilePath, DataFilePath + "." + std::to_string(i) + (wrong_file ? ".wrong-file-backup" : ".backup"));
+        std::filesystem::rename(DataFilePath, DataFilePath + "." + std::to_string(i) + (unsupported_file ? ".unsupported-file-backup" : ".backup"));
     }
 
     void EvolvingAI::Load()
