@@ -8,6 +8,15 @@ on:
       version:
         description: 'Version without v for zip file name'
         required: true
+        type: string
+      enable_linux:
+        description: 'Enable Linux build'
+        default: true
+        type: boolean
+      enable_windows:
+        description: 'Enable Windows build'
+        default: true
+        type: boolean
 
 jobs:
   build:
@@ -30,17 +39,21 @@ jobs:
         c_compiler: [gcc, cl]
         include:
           - os: windows-latest
+            enabled: ${{ inputs.enable_windows }}
             c_compiler: cl
             cpp_compiler: cl
+            install_dependencies_command: echo nothing
             output_filename: Reversi.exe
-            zip_files_command: move ${{ github.workspace }}/build/Reversi/Reversi.exe . && move ${{ github.workspace }}/LICENSE .
+            zip_files_command: move ../Reversi/Release/Reversi.exe . && move ../../LICENSE . && ren LICENSE LICENSE.txt
             zip_command: Compress-Archive -Path ./* -Destination reversi-v${{ inputs.version }}-windows-x86_64.zip
             zip_name: reversi-v${{ inputs.version }}-windows-x86_64.zip
           - os: ubuntu-latest
+            enabled: ${{ inputs.enable_linux }}
             c_compiler: gcc
             cpp_compiler: g++
+            install_dependencies_command: sudo apt-get install xorg-dev libglu1-mesa-dev
             output_filename: Reversi
-            zip_files_command: mv ${{ github.workspace }}/build/Reversi/Reversi ./ && mv ${{ github.workspace }}/LICENSE ./ && mv ${{ github.workspace }}/reminimalism-reversi.desktop ./ && mv ${{ github.workspace }}/icon/Reversi.svg ./
+            zip_files_command: mv ../Reversi/Reversi ./ && mv ../../LICENSE ./ && mv ../../reminimalism-reversi.desktop ./ && mv ../../icon/Reversi.svg ./
             zip_command: zip reversi-v${{ inputs.version }}-linux-x86_64.zip ./*
             zip_name: reversi-v${{ inputs.version }}-linux-x86_64.zip
           #- os: ubuntu-latest
@@ -58,13 +71,19 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Set reusable strings
+      if: ${{ matrix.enabled }}
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
       id: strings
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Install dependencies
+      if: ${{ matrix.enabled }}
+      run: ${{ matrix.install_dependencies_command }}
+
     - name: Configure CMake
+      if: ${{ matrix.enabled }}
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
@@ -75,34 +94,41 @@ jobs:
         -S ${{ github.workspace }}
 
     - name: Build
+      if: ${{ matrix.enabled }}
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
     - name: Test
+      if: ${{ matrix.enabled }}
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
 
     - name: Get release info
+      if: ${{ matrix.enabled }}
       id: latest_release_info
       uses: jossef/action-latest-release-info@v1.2.1
       env:
         GITHUB_TOKEN: ${{ github.token }}
 
     - name: Create zip folder
+      if: ${{ matrix.enabled }}
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       run: mkdir zipfiles
 
     - name: Prepare to create zip
+      if: ${{ matrix.enabled }}
       working-directory: ${{ steps.strings.outputs.build-output-dir }}/zipfiles
       run: ${{ matrix.zip_files_command }}
 
     - name: Create zip
+      if: ${{ matrix.enabled }}
       working-directory: ${{ steps.strings.outputs.build-output-dir }}/zipfiles
       run: ${{ matrix.zip_command }}
 
     - name: Upload zip
+      if: ${{ matrix.enabled }}
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
