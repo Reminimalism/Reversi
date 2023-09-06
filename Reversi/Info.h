@@ -7,7 +7,7 @@ namespace Reversi::Info
     /// @brief The name to print. No newline character.
     const char * const NAME = "Reversi";
     /// @brief The version without 'v'. No newline character.
-    const char * const VERSION = "0.2-dev";
+    const char * const VERSION = "0.3";
 
     /// @brief Indented multiline string with extra newlines at the beginning and the end.
     const char * const DEPENDENCIES = R"(
