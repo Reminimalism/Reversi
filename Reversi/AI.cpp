@@ -160,9 +160,11 @@ namespace Reversi
 #endif
                 if (state.CanMakeMove(x, y))
                 {
-                    float score = 0;
+                    float score = 1;
                     for (auto features : GetFeatures(state, x, y))
-                        score += GetScore(features);
+                    {
+                        score *= GetScore(features);
+                    }
                     if (score > best_score)
                     {
                         best_score = score;
