@@ -195,7 +195,17 @@ namespace Reversi
         if (best_moves.size() == 0) // Robust code
             return std::optional<std::tuple<int, int>>();
         if (best_moves.size() == 1)
+        {
+#if REVERSI_DEBUG
+            Log("Choice score details:", " ");
+            for (auto features : GetFeatures(state, std::get<0>(best_moves[0]), std::get<1>(best_moves[0])))
+            {
+                Log(std::to_string(GetScore(features)), " ");
+            }
+            Log();
+#endif
             return best_moves[0];
+        }
         std::random_device device;
         std::mt19937 mt(device());
         std::uniform_int_distribution<std::mt19937::result_type> dist(0, best_moves.size() - 1);
@@ -212,6 +222,13 @@ namespace Reversi
             + std::to_string(std::get<1>(best_moves[choice]))
             + ")"
         );
+
+        Log("Choice score details:", " ");
+        for (auto features : GetFeatures(state, std::get<0>(best_moves[0]), std::get<1>(best_moves[0])))
+        {
+            Log(std::to_string(GetScore(features)), " ");
+        }
+        Log();
 #endif
         return best_moves[choice];
     }
