@@ -284,7 +284,7 @@ namespace Reversi
                 return;
             move_to_impacts[original_move][location] = new_impact;
             location_to_impacts[location][original_move] = new_impact;
-        };
+        }; // TODO: Investigate the overriding effect on negative score of slots around the corners, does it reduce the negative feedback?
 #if REVERSI_DEBUG
         // Learn debug info
         std::map<Logic::Change, std::tuple<Logic, Logic>> move_to_states;
